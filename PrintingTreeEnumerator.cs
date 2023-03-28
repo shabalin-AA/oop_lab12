@@ -4,17 +4,19 @@ using System.Collections;
 
 namespace lab12
 {
-    public class PrintingTreeEnumerator : IEnumerator<KeyValuePair<string, Printing>>
+    public class PrintingTreeEnumerator<TKey, TValue> : IDictionaryEnumerator
+        where TKey : ICloneable
+        where TValue : ICloneable
     {
         int i = -1;
         int count;
-        KeyValuePair<string, Printing>[] arr;
+        KeyValuePair<TKey, TValue>[] arr;
 
 
-        public PrintingTreeEnumerator(PrintingTree t)
+        public PrintingTreeEnumerator(PrintingTree<TKey, TValue> t)
         {
             count = t.Count;
-            arr = new KeyValuePair<string, Printing>[count];
+            arr = new KeyValuePair<TKey, TValue>[count];
             t.CopyTo(arr, 0);
         }
 
@@ -46,7 +48,7 @@ namespace lab12
         }
 
 
-        public KeyValuePair<string, Printing> Current
+        public KeyValuePair<TKey, TValue> Current
         {
             get
             {

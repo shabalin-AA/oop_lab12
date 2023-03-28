@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using lab10;
@@ -7,29 +7,19 @@ using lab10;
 
 namespace lab12
 {
-    public class PrintingTree : IDictionary<string, Printing>
+    public class PrintingTree<TKey, TValue> : IDictionary 
+        where TKey   : ICloneable
+        where TValue : ICloneable
     {
-        TreeNode? root = null;
-
-        public TreeNode? Root { get { return root; } }
+        TreeNode<TKey, TValue>? root = null;
+        public TreeNode<TKey, TValue>? Root { get { return root; } }
 
 
         public PrintingTree() { }
-
-        public PrintingTree(PrintingTree another) { root = another.Root; }
-
-
-        public void CloneTo(PrintingTree another)
-        {
-            KeyValuePair<string, Printing>[] arr = new KeyValuePair<string, Printing>[Count];
-            CopyTo(arr, 0);
-
-            foreach (var tn in arr)
-                another.Add(tn);
-        }
+        public PrintingTree(PrintingTree<TKey, TValue> another) { another.CloneTo(this); }
 
 
-        string ToString(TreeNode? t)
+        string ToString(TreeNode<TKey, TValue>? t)
         {
             if (t == null)
                 return "";
@@ -40,13 +30,14 @@ namespace lab12
         public override string ToString() { return ToString(root); }
 
 
-        private void Add(string key, Printing value, TreeNode q)
+        private void Add(TKey key, TValue value, TreeNode<TKey, TValue> q)
         {
-            if (q.key.CompareTo(key) > 0)
+            
+            if (Comparer.Default.Compare(q.key, key) > 0)
             {
                 if (q.left == null)
                 {
-                    TreeNode newNode = new TreeNode(key, value);
+                    TreeNode<TKey, TValue> newNode = new TreeNode<TKey, TValue>(key, value);
                     newNode.parent = q;
                     q.left = newNode;
                 }
@@ -57,7 +48,7 @@ namespace lab12
             {
                 if (q.right == null)
                 {
-                    TreeNode newNode = new TreeNode(key, value);
+                    TreeNode<TKey, TValue> newNode = new TreeNode<TKey, TValue>(key, value);
                     newNode.parent = q;
                     q.right = newNode;
                 }
@@ -66,40 +57,36 @@ namespace lab12
             }
         }
 
-
-        public void Add(string key, Printing value)
+        public virtual void Add(object key, object? value)
         {
             if (root == null)
-                root = new TreeNode(key, value);
+                root = new TreeNode<TKey, TValue>((TKey)key, (TValue)value);
             else
-                Add(key, value, root);
+                Add((TKey)key, (TValue)value, root);
         }
 
-
-        public void Add(KeyValuePair<string, Printing> pair)
+        public virtual void Add(KeyValuePair<TKey, TValue> pair)
         {
             if (root == null)
-                root = new TreeNode(pair.Key, pair.Value);
+                root = new TreeNode<TKey, TValue>(pair.Key, pair.Value);
             else
                 Add(pair.Key, pair.Value, root);
         }
 
-
-        public void Add(KeyValuePair<string, Printing>[] arr)
+        public virtual void Add(KeyValuePair<TKey, TValue>[] arr)
         {
             foreach (var pair in arr)
                 Add(pair);
         }
 
 
-        int CountNodes(TreeNode? t)
+        int CountNodes(TreeNode<TKey, TValue>? t)
         {
             if (t == null)
                 return 0;
             else
                 return 1 + CountNodes(t.left) + CountNodes(t.right);
         }
-
 
         public int Count
         {
@@ -110,20 +97,19 @@ namespace lab12
         public bool IsReadOnly { get { return false; } }
 
 
-        void TreeToArray(KeyValuePair<string, Printing>[] array, ref int arrayIndex, TreeNode t)
+        void TreeToArray(Array array, ref int arrayIndex, TreeNode<TKey, TValue> t)
         {
             if (t.left != null)
                 TreeToArray(array, ref arrayIndex, t.left);
 
-            array[arrayIndex] = new KeyValuePair<string, Printing>(t.value.ToString(), t.value);
+            array.SetValue(new KeyValuePair<TKey, TValue>(t.key, t.value), arrayIndex);
             arrayIndex += 1;
 
             if (t.right != null)
                 TreeToArray(array, ref arrayIndex, t.right);
         }
 
-
-        public void CopyTo(KeyValuePair<string, Printing>[] array, int arrayIndex)
+        public void CopyTo(Array array, int arrayIndex)
         {
             if (root == null)
                 throw new ArgumentNullException();
@@ -132,12 +118,33 @@ namespace lab12
         }
 
 
-        TreeNode? Find(string key, TreeNode? t)
+        public void CloneTo(PrintingTree<TKey, TValue> another)
+        {
+            KeyValuePair<TKey, TValue>[] arr = new KeyValuePair<TKey, TValue>[Count];
+            CopyTo(arr, 0);
+
+            foreach (var tn in arr)
+            {
+                TKey key; TValue value;
+                if (tn.Key is ICloneable)
+                    key = (TKey) tn.Key.Clone();
+                else key = tn.Key;
+
+                if (tn.Key is ICloneable)
+                    value = (TValue) tn.Value.Clone();
+                else value = tn.Value;
+                
+                another.Add(key, value);
+            }
+        }
+
+
+        TreeNode<TKey, TValue>? Find(TKey key, TreeNode<TKey, TValue>? t)
         {
             if (t == null)
                 return null;
 
-            if (t.key == key)
+            if (t.key.Equals(key))
                 return t;
 
             if (Find(key, t.left) == null)
@@ -147,17 +154,16 @@ namespace lab12
         }
 
 
-        public Printing? FindValue(string key)
+        public TValue? FindValue(TKey key)
         {
             if (Find(key, root) != null)
                 return Find(key, root).value;
-            else return null;
+            else return default(TValue);
         }
 
 
-        void Delete(TreeNode t)
+        void Delete(TreeNode<TKey, TValue>? t)
         {
-            //Console.WriteLine(t.value);
             if (t.left != null)
                 Delete(t.left);
             t.left = null;
@@ -176,10 +182,24 @@ namespace lab12
             }
         }
 
-
-        public bool Remove(string key)
+        public virtual void Remove(object obj)
         {
-            TreeNode? q = Find(key, root);
+            if (obj is TKey)
+            {
+                var key = (TKey)obj;
+                TreeNode<TKey, TValue>? q = Find(key, root);
+                if (q != null)
+                {
+                    Delete(q);
+                    q = null;
+                    GC.Collect();
+                }
+            }
+        }
+
+        public virtual bool Remove(KeyValuePair<TKey, TValue> pair)
+        {
+            TreeNode<TKey, TValue>? q = Find(pair.Key, root);
             if (q == null)
                 return false;
             else
@@ -189,21 +209,6 @@ namespace lab12
                 return true;
             }
         }
-
-
-        public bool Remove(KeyValuePair<string, Printing> pair)
-        {
-            TreeNode? q = Find(pair.Key, root);
-            if (q == null)
-                return false;
-            else
-            {
-                Delete(q);
-                GC.Collect();
-                return true;
-            }
-        }
-
 
         public void Clear()
         {
@@ -216,7 +221,7 @@ namespace lab12
         }
 
 
-        public bool ContainsKey(string key)
+        public bool ContainsKey(TKey key)
         {
             if (Find(key, root) != null)
                 return true;
@@ -224,55 +229,74 @@ namespace lab12
                 return false;
         }
 
-
-        public bool Contains(KeyValuePair<string, Printing> pair)
+        public bool Contains(object obj)
         {
-            if (Find(pair.Key, root) != null)
-                return Find(pair.Key, root).value == pair.Value;
-            else
-                return false;
+            if (obj is KeyValuePair<TKey, TValue>)
+            {
+                var pair = (KeyValuePair<TKey, TValue>)obj;
+                if (Find(pair.Key, root) != null)
+                    return Find(pair.Key, root).value.Equals(pair.Value);
+            }
+            return false;
         }
 
 
-        public bool TryGetValue(string key, out Printing value)
+        public bool TryGetValue(TKey key, out TValue? value)
         {
-            value = Find(key, root).value;
-            if (value == null)
+            TreeNode<TKey, TValue> node = Find(key, root);
+            if (node == null)
+            {
+                value = default(TValue);
                 return false;
+            }
             else
+            {
+                value = node.value;
                 return true;
-        }
-
-
-        IEnumerator<KeyValuePair<string, Printing>> IEnumerable<KeyValuePair<string, Printing>>.GetEnumerator()
-        {
-            return new PrintingTreeEnumerator(this);
+            }
         }
 
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            throw new NotImplementedException();
+            return new PrintingTreeEnumerator<TKey, TValue>(this);
+        }
+
+        IDictionaryEnumerator IDictionary.GetEnumerator()
+        {
+            return new PrintingTreeEnumerator<TKey, TValue>(this);
         }
 
 
-        public Printing this[string key]
+        public virtual object this[object key]
         {
             get
             {
-                if (Find(key, root) == null)
-                    throw new ArgumentOutOfRangeException();
-                else
-                    return Find(key, root).value;
+                if (key is TKey)
+                {
+                    if (Find((TKey)key, root) == null)
+                        throw new ArgumentOutOfRangeException();
+                    else
+                        return Find((TKey)key, root).value;
+                }
+                else throw new ArgumentException();
             }
             set
             {
-                Add(key, value, root);
+                if (key is TKey)
+                {
+                    var tn = Find((TKey)key, root);
+                    if (tn != null)
+                        tn.value = (TValue?)value;
+                    else
+                        Add((TKey)key, (TValue?)value);
+                }
+                else throw new ArgumentException();
             }
         }
 
 
-        void TreeToKeyArray(string[] array, ref int arrayIndex, TreeNode t)
+        void TreeToKeyArray(TKey[] array, ref int arrayIndex, TreeNode<TKey, TValue> t)
         {
             if (t.left != null)
                 TreeToKeyArray(array, ref arrayIndex, t.left);
@@ -284,12 +308,11 @@ namespace lab12
                 TreeToKeyArray(array, ref arrayIndex, t.right);
         }
 
-
-        public ICollection<string> Keys
+        public ICollection Keys
         {
             get
             {
-                string[] keys = new string[this.Count];
+                TKey[] keys = new TKey[this.Count];
                 int i = 0;
                 TreeToKeyArray(keys, ref i, root);
                 return keys;
@@ -297,7 +320,7 @@ namespace lab12
         }
 
 
-        void TreeToValueArray(Printing[] array, ref int arrayIndex, TreeNode t)
+        void TreeToValueArray(TValue[] array, ref int arrayIndex, TreeNode<TKey, TValue> t)
         {
             if (t.left != null)
                 TreeToValueArray(array, ref arrayIndex, t.left);
@@ -309,17 +332,22 @@ namespace lab12
                 TreeToValueArray(array, ref arrayIndex, t.right);
         }
 
-
-        public ICollection<Printing> Values
+        public ICollection Values
         {
             get
             {
-                Printing[] values = new Printing[this.Count];
+                TValue[] values = new TValue[this.Count];
                 int i = 0;
                 TreeToValueArray(values, ref i, root);
                 return values;
             }
         }
+
+        bool IDictionary.IsFixedSize => throw new NotImplementedException();
+
+        bool ICollection.IsSynchronized => throw new NotImplementedException();
+
+        object ICollection.SyncRoot => throw new NotImplementedException();
     }
 }
 
