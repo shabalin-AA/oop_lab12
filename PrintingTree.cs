@@ -7,7 +7,7 @@ using lab10;
 
 namespace lab12
 {
-    public class PrintingTree<TKey, TValue> : IDictionary 
+    public class PrintingTree<TKey, TValue> : IDictionary, ICloneable
         where TKey   : ICloneable
         where TValue : ICloneable
     {
@@ -331,6 +331,13 @@ namespace lab12
             if (t.right != null)
                 TreeToValueArray(array, ref arrayIndex, t.right);
         }
+
+
+        public object Clone()
+        {
+            return new PrintingTree<TKey, TValue>(this);
+        }
+
 
         public ICollection Values
         {
